@@ -1,6 +1,21 @@
-*.stl
-*.gcode
+# Python
 __pycache__/
 *.pyc
-.DS_Store
+*.pyo
+*.pyd
+*.env
 venv/
+
+# G-code / temp
+gcodes/
+*.stl
+temp.stl
+
+# System files
+.DS_Store
+
+# Large installers
+*.dmg
+*.pkg
+Dockerfile
+
