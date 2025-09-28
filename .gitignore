@@ -3,19 +3,27 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.env
+.Python
+
+# Virtualenv
+env/
 venv/
+ENV/
+*.env
 
-# G-code / temp
-gcodes/
-*.stl
-temp.stl
+# Node / React
+node_modules/
+build/
+dist/
 
-# System files
+# Logs
+*.log
+
+# OS stuff
 .DS_Store
 
-# Large installers
-*.dmg
-*.pkg
-Dockerfile
-
+# Docker / large archives
+*.tgz
+*.tar.gz
+*.zip
+*.tgz

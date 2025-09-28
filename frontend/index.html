@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PIY Web Slicer</title>
+</head>
+<body>
+  <h1>PIY Cloud Slicer</h1>
+  <form id="sliceForm">
+    <label>STL File:</label>
+    <input type="file" name="stlFile" required><br><br>
+
+    <label>Layer Height (mm):</label>
+    <input type="text" name="layerHeight" value="0.2"><br><br>
+
+    <label>Infill (%):</label>
+    <input type="text" name="infill" value="20"><br><br>
+
+    <button type="submit">Slice!</button>
+  </form>
+
+  <div id="result"></div>
+
+  <script>
+    document.getElementById('sliceForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+
+      const res = await fetch('/slice', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      const resultDiv = document.getElementById('result');
+
+      if (data.download_url) {
+        resultDiv.innerHTML = `
+          <p>${data.message}</p>
+          <a href="${data.download_url}" download="${data.filename}">Download G-code</a>
+        `;
+      } else {
+        resultDiv.innerHTML = `<p style="color:red;">Error: ${JSON.stringify(data)}</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
