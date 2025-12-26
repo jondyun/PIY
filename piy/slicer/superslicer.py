@@ -1,25 +1,30 @@
 import subprocess
-from pathlib import Path
+import os
 
-def slice_stl(stl_path: str, printer_ini: str, output_path: str = None):
-    """
-    Slice an STL file using SuperSlicer headless with static INI.
-    """
-    stl_path = Path(stl_path)
-    printer_ini = Path(printer_ini)
-    if output_path is None:
-        output_path = stl_path.with_suffix(".gcode")
+SUPERSLICER_PATH = "/Applications/SuperSlicer.app/Contents/MacOS/SuperSlicer"
+
+
+def slice_stl(stl_path, printer_ini, infill_percent=None):
+    output_gcode = os.path.splitext(stl_path)[0] + ".gcode"
 
     cmd = [
-        "/Applications/SuperSlicer.app/Contents/MacOS/SuperSlicer",
-        "--load", str(printer_ini),
-        "--output", str(output_path),
-        "--gcode",           # slice to G-code
-        str(stl_path)
+        SUPERSLICER_PATH,
+        "--slice",
+        "--load", printer_ini,
+        "--output", output_gcode,
+        stl_path
     ]
 
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return f"Slicing finished! Output: {output_path}"
-    except subprocess.CalledProcessError as e:
-        return f"Error during slicing:\n{e.stderr}"
+    if infill_percent is not None:
+        cmd.append(f"--fill-density={infill_percent}%")
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr)
+
+    return output_gcode
