@@ -1,120 +1,164 @@
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QWidget,
-    QVBoxLayout, QLabel, QFileDialog, QComboBox, QSlider, QHBoxLayout
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QPushButton,
+    QLabel,
+    QFileDialog,
+    QComboBox,
+    QSlider,
+    QVBoxLayout,
+    QHBoxLayout,
 )
 from PySide6.QtCore import Qt
 
 from piy.slicer.superslicer import slice_stl
+from piy.ui.stl_viewer import STLViewer
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("PIY - Simple Slicer Frontend")
-        self.setMinimumSize(500, 400)
 
+        self.setWindowTitle("PIY – Simple Slicer")
+        self.setMinimumSize(900, 600)
+
+        # ---------- State ----------
         self.stl_path = None
         self.printer_ini = None
         self.infill_percent = 20
 
-        # ---------- Status Label ----------
-        self.status_label = QLabel("No STL loaded")
-        self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("color: blue; font-weight: bold; font-size: 14px;")
+        # ---------- Root Widget ----------
+        root = QWidget()
+        self.setCentralWidget(root)
 
-        # ---------- Load STL Button ----------
+        main_layout = QHBoxLayout()
+        root.setLayout(main_layout)
+
+        # ============================================================
+        # LEFT PANEL (Controls)
+        # ============================================================
+        controls_layout = QVBoxLayout()
+        controls_layout.setSpacing(12)
+
+        # Status
+        self.status_label = QLabel("Load an STL to begin")
+        self.status_label.setWordWrap(True)
+        self.status_label.setStyleSheet(
+            "font-size: 14px; font-weight: bold; color: #1976D2;"
+        )
+
+        # Load STL
         load_button = QPushButton("Load STL")
         load_button.clicked.connect(self.load_stl)
         load_button.setStyleSheet(
-            "background-color: #4CAF50; color: white; font-weight: bold; padding: 8px; border-radius: 6px;"
+            "background:#4CAF50; color:white; padding:8px; border-radius:6px;"
         )
 
-        # ---------- Printer Dropdown ----------
+        # Printer selector
+        printer_label = QLabel("Printer")
+        printer_label.setStyleSheet("font-weight: bold;")
+
         self.printer_combo = QComboBox()
         self.printer_combo.addItems([
             "PIY Light Duty 2.0",
             "Ender 3 (Stock)"
         ])
         self.printer_combo.currentTextChanged.connect(self.select_printer)
-        self.printer_combo.setStyleSheet(
-            "font-size: 14px; padding: 4px; min-width: 180px;"
-        )
 
-        # ---------- Infill Slider ----------
+        # Infill slider
         self.infill_label = QLabel(f"Infill: {self.infill_percent}%")
         self.infill_label.setStyleSheet("font-weight: bold;")
+
         self.infill_slider = QSlider(Qt.Horizontal)
         self.infill_slider.setRange(0, 100)
         self.infill_slider.setValue(self.infill_percent)
         self.infill_slider.valueChanged.connect(self.update_infill)
         self.infill_slider.setStyleSheet("""
-            QSlider::groove:horizontal { height: 8px; background: #ddd; border-radius: 4px; }
-            QSlider::handle:horizontal { background: #2196F3; width: 20px; border-radius: 10px; }
+            QSlider::groove:horizontal {
+                height: 8px;
+                background: #ddd;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: #2196F3;
+                width: 18px;
+                margin: -5px 0;
+                border-radius: 9px;
+            }
         """)
 
-        infill_layout = QVBoxLayout()
-        infill_layout.addWidget(self.infill_label)
-        infill_layout.addWidget(self.infill_slider)
-
-        # ---------- Slice Button ----------
+        # Slice button
         self.slice_button = QPushButton("Slice")
         self.slice_button.setEnabled(False)
         self.slice_button.clicked.connect(self.slice)
         self.slice_button.setStyleSheet(
-            "background-color: #2196F3; color: white; font-weight: bold; padding: 10px; border-radius: 8px;"
+            "background:#2196F3; color:white; padding:10px; border-radius:8px;"
         )
 
-        # ---------- Layout ----------
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.addWidget(load_button)
-        layout.addWidget(self.status_label)
-        layout.addWidget(QLabel("Select Printer:"))
-        layout.addWidget(self.printer_combo)
-        layout.addLayout(infill_layout)
-        layout.addWidget(self.slice_button)
+        # Assemble controls
+        controls_layout.addWidget(load_button)
+        controls_layout.addWidget(self.status_label)
+        controls_layout.addSpacing(10)
+        controls_layout.addWidget(printer_label)
+        controls_layout.addWidget(self.printer_combo)
+        controls_layout.addSpacing(10)
+        controls_layout.addWidget(self.infill_label)
+        controls_layout.addWidget(self.infill_slider)
+        controls_layout.addStretch()
+        controls_layout.addWidget(self.slice_button)
 
-        container = QWidget()
-        container.setLayout(layout)
-        self.setCentralWidget(container)
+        # ============================================================
+        # RIGHT PANEL (STL Viewer)
+        # ============================================================
+        self.viewer = STLViewer()
 
-        # ---------- Defaults ----------
+        # ============================================================
+        # Layout Split
+        # ============================================================
+        main_layout.addLayout(controls_layout, stretch=1)
+        main_layout.addWidget(self.viewer, stretch=3)
+
+        # ---------- Init ----------
         self.select_printer()
 
-    # ---------- Event Handlers ----------
+    # ============================================================
+    # Handlers
+    # ============================================================
     def load_stl(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Select STL file", "", "STL Files (*.stl)"
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select STL File", "", "STL Files (*.stl)"
         )
-        if file_path:
-            self.stl_path = file_path
-            self.status_label.setText(f"Loaded STL:\n{file_path}")
-            self.status_label.setStyleSheet("color: green; font-weight: bold; font-size: 14px;")
-            self.slice_button.setEnabled(True)
+        if not path:
+            return
+
+        self.stl_path = path
+        self.viewer.load_stl(path)
+        self.slice_button.setEnabled(True)
+
+        self.update_status("STL loaded")
 
     def select_printer(self):
-        printer_name = self.printer_combo.currentText()
-        if printer_name == "PIY Light Duty 2.0":
+        name = self.printer_combo.currentText()
+
+        if name == "PIY Light Duty 2.0":
             self.printer_ini = "/Users/jdyun/Desktop/piy_light_duty_2_0.ini"
-        elif printer_name == "Ender 3 (Stock)":
+        elif name == "Ender 3 (Stock)":
             self.printer_ini = "/Users/jdyun/Desktop/creality_ender3.ini"
 
-        self.status_label.setText(
-            f"STL: {self.stl_path or 'None'}\nPrinter: {printer_name}\nInfill: {self.infill_percent}%"
-        )
-        self.status_label.setStyleSheet("color: blue; font-weight: bold; font-size: 14px;")
+        self.update_status("Printer selected")
 
     def update_infill(self, value):
         self.infill_percent = value
         self.infill_label.setText(f"Infill: {value}%")
+        self.update_status()
 
     def slice(self):
         if not self.stl_path or not self.printer_ini:
-            self.status_label.setText("Select STL and printer first!")
-            self.status_label.setStyleSheet("color: red; font-weight: bold; font-size: 14px;")
+            self.set_error("Select STL and printer first")
             return
 
-        self.status_label.setText(f"Slicing with {self.infill_percent}% infill...")
+        self.status_label.setText("Slicing…")
         QApplication.processEvents()
 
         try:
@@ -123,10 +167,37 @@ class MainWindow(QMainWindow):
                 self.printer_ini,
                 infill_percent=self.infill_percent
             )
-            self.status_label.setText("Slicing finished ✅")
-            self.status_label.setStyleSheet("color: green; font-weight: bold; font-size: 14px;")
+            self.set_success("Slicing finished ✅")
         except Exception as e:
-            self.status_label.setText(f"Slicing failed:\n{e}")
-            self.status_label.setStyleSheet("color: red; font-weight: bold; font-size: 14px;")
+            self.set_error(str(e))
+
+    # ============================================================
+    # UI Helpers
+    # ============================================================
+    def update_status(self, prefix=None):
+        text = []
+        if prefix:
+            text.append(prefix)
+        text.append(f"STL: {self.stl_path or 'None'}")
+        text.append(f"Printer: {self.printer_combo.currentText()}")
+        text.append(f"Infill: {self.infill_percent}%")
+
+        self.status_label.setText("\n".join(text))
+        self.status_label.setStyleSheet(
+            "font-size: 14px; font-weight: bold; color: #1976D2;"
+        )
+
+    def set_error(self, msg):
+        self.status_label.setText(f"Error:\n{msg}")
+        self.status_label.setStyleSheet(
+            "font-size: 14px; font-weight: bold; color: #D32F2F;"
+        )
+
+    def set_success(self, msg):
+        self.status_label.setText(msg)
+        self.status_label.setStyleSheet(
+            "font-size: 14px; font-weight: bold; color: #388E3C;"
+        )
+
 
 print("LOADED main_window.py FROM:", __file__)
